@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      aria-description="This is a Polygon Generator Tool which generates the polygons with the given constraints."
+    />
+    <title>Poly - Gen</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main>
+      <h1>PolyGen</h1>
+      <h3>By Navaneeth Reddy Nalla</h3>
+
+      <canvas id="draw-area"></canvas>
+
+      <form onsubmit="drawPolygon(event)" id="config">
+        <h2>Configuration</h2>
+        <div class="input-group">
+          <label for="sides">Number of Sides:</label>
+          <input type="number" min="3" />
+        </div>
+        <div class="input-group">
+          <label for="sides">Minimum angle (in degrees):</label>
+          <input type="number" min="1" max="359" />
+        </div>
+        <div class="input-group">
+          <label for="sides">Maximum angle (in degrees):</label>
+          <input type="number" min="1" max="359" />
+        </div>
+        <div class="input-group">
+          <label for="sides">Common Difference (if angles in AP):</label>
+          <input type="number" min="0" max="360" />
+        </div>
+        <button type="submit">Generate</button>
+      </form>
+    </main>
+
+    <script src="index.js"></script>
+  </body>
+</html>
