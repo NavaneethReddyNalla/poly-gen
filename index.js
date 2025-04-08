@@ -50,6 +50,15 @@ function drawPolygon(event) {
 
   ctx.closePath();
   ctx.stroke();
+
+  // Draw circles on each vertex
+  ctx.fillStyle = "blue";
+  for (const point of centeredPoints) {
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, 3, 0, 2 * Math.PI);
+    ctx.fill();
+  }
+  ctx.closePath();
 }
 
 function createStatusEl() {
