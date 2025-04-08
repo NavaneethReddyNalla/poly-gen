@@ -11,13 +11,36 @@ function drawPolygon(event) {
   const ctx = canvas.getContext("2d");
   canvas.width = 500;
   canvas.height = 500;
-
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.beginPath();
 
-  const angles = generateAngles(sides, minAngle, maxAngle, commonDiff);
-  const sideLengths = optimizeSideLengths(angles);
-  const rawPoints = simulateWalkPoints(angles, sideLengths);
+  const statusEl =
+    document.getElementById("status-message") || createStatusEl();
+
+  const { angles, valid } = generateAngles(
+    sides,
+    minAngle,
+    maxAngle,
+    commonDiff
+  );
+  if (!valid) {
+    statusEl.textContent = `❌ Cannot generate valid angles with given inputs. Check if total angle sum equals ${
+      (sides - 2) * 180
+    }°.`;
+    return;
+  }
+
+  const { lengths, success, loss } = optimizeSideLengths(angles);
+  if (!success) {
+    statusEl.textContent = `⚠️ Polygon could not be closed with given angles (closure error: ${loss.toFixed(
+      2
+    )}).`;
+    return;
+  } else {
+    statusEl.textContent = "";
+  }
+
+  const rawPoints = simulateWalkPoints(angles, lengths);
   const centeredPoints = centerPolygon(rawPoints, canvas.width, canvas.height);
 
   ctx.moveTo(centeredPoints[0].x, centeredPoints[0].y);
@@ -29,22 +52,58 @@ function drawPolygon(event) {
   ctx.stroke();
 }
 
+function createStatusEl() {
+  const el = document.createElement("p");
+  el.id = "status-message";
+  el.style.color = "red";
+  el.style.fontWeight = "bold";
+  el.style.marginTop = "10px";
+  document.getElementById("config").appendChild(el);
+  return el;
+}
+
 // Function to generate angles within given constraints
-function generateAngles(n, minAngle, maxAngle, commonDiff = 0) {
+function generateAngles(n, min, max, commonDiff = 0) {
+  const totalSum = (n - 2) * 180;
+
   let angles = [];
-  let total = (n - 2) * 180;
 
-  for (let i = 0; i < n; i++) {
-    let angle = Math.min(
-      maxAngle,
-      Math.max(minAngle, minAngle + i * commonDiff)
-    );
-    angles.push(angle);
+  if (commonDiff === 0) {
+    // Try to generate random angles between min and max
+    let remaining = totalSum;
+    for (let i = 0; i < n; i++) {
+      const remainingSlots = n - i - 1;
+      const minBound = Math.max(min, remaining - remainingSlots * max);
+      const maxBound = Math.min(max, remaining - remainingSlots * min);
+      if (minBound > maxBound) return { angles: [], valid: false };
+
+      const angle =
+        Math.floor(Math.random() * (maxBound - minBound + 1)) + minBound;
+      angles.push(angle);
+      remaining -= angle;
+    }
+
+    if (remaining !== 0) return { angles: [], valid: false };
+    return { angles, valid: true };
+  } else {
+    // Arithmetic Progression
+    // Let a = min, d = commonDiff
+    // We want sum of AP: S = n/2 * [2a + (n-1)d] === totalSum
+
+    const a = min;
+    const d = commonDiff;
+    const expectedSum = (n / 2) * (2 * a + (n - 1) * d);
+
+    if (expectedSum !== totalSum) return { angles: [], valid: false };
+
+    for (let i = 0; i < n; i++) {
+      const angle = a + i * d;
+      if (angle < min || angle > max) return { angles: [], valid: false };
+      angles.push(angle);
+    }
+
+    return { angles, valid: true };
   }
-
-  let currentSum = angles.reduce((a, b) => a + b, 0);
-  let scale = total / currentSum;
-  return angles.map((a) => a * scale);
 }
 
 function simulateWalkEndpoint(angles, lengths) {
@@ -121,8 +180,9 @@ function computeGradient(angles, lengths, epsilon = 0.01) {
   return gradients;
 }
 
-function optimizeSideLengths(angles, iterations = 1000, learningRate = 1) {
+function optimizeSideLengths(angles, iterations = 10000, learningRate = 0.1) {
   let lengths = Array.from({ length: angles.length }, () => 80);
+  let loss = Infinity;
 
   for (let i = 0; i < iterations; i++) {
     const grad = computeGradient(angles, lengths);
@@ -131,11 +191,11 @@ function optimizeSideLengths(angles, iterations = 1000, learningRate = 1) {
     }
 
     const pos = simulateWalkEndpoint(angles, lengths);
-    const loss = Math.hypot(pos.x, pos.y);
+    loss = Math.hypot(pos.x, pos.y);
     if (loss < 1) {
-      break;
+      return { lengths, success: true, loss };
     }
   }
 
-  return lengths;
+  return { lengths, success: false, loss };
 }
